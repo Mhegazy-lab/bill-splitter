@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="Bill Splitter">
+<meta name="description" content="Split any bill with tip between friends — see each person's share instantly.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Bill Splitter</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:#0A0F0D;color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+display:flex;align-items:center;justify-content:center;min-height:100dvh;
+-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.app{width:min(480px,100vw - 24px);height:100dvh;max-height:780px;display:flex;flex-direction:column;
+padding:16px 14px 12px;gap:12px}
+header{text-align:center}
+header h1{font-size:22px;font-weight:700;letter-spacing:.5px;color:#34D399}
+.sub{font-size:13px;color:#9CA3AF;margin-top:2px}
+label.lbl{font-size:13px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px}
+.card{background:#111714;border:1px solid #1E2A24;border-radius:14px;padding:10px 12px}
+input[type=number],input[type=text]{-webkit-user-select:text;user-select:text}
+.bill-input{width:100%;min-height:64px;background:#0A0F0D;border:1px solid #1E2A24;border-radius:12px;
+color:#F3F4F6;font-size:34px;font-weight:700;text-align:center;outline:none}
+.bill-input:focus{border-color:#34D399}
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stepper .val{font-size:30px;font-weight:700;min-width:96px;text-align:center;color:#F3F4F6}
+button{min-height:48px;border:none;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer;
+font-family:inherit;color:#062B1F;background:#34D399}
+button:active{transform:scale(.97)}
+button.step{width:76px;font-size:26px;flex:none}
+button.cur{width:100%;font-size:20px}
+button:disabled{background:#374151;color:#9CA3AF;cursor:default;transform:none}
+[data-focusable]:focus{outline:none}
+[data-focusable]:focus-visible{outline:3px solid #34D399;outline-offset:2px}
+.result{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+background:#0E1512;border:1px solid #34D39955;border-radius:16px;padding:8px}
+.result .per{font-size:60px;font-weight:800;color:#34D399;line-height:1;word-break:break-all;text-align:center}
+.result .per small{font-size:26px;font-weight:700}
+.result .tot{font-size:18px;color:#D1D5DB}
+.result .cap{font-size:12px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Bill Splitter</h1>
+    <div class="sub">Split the bill, keep the friends</div>
+  </header>
+
+  <div>
+    <label class="lbl" for="bill">Bill total</label>
+    <input class="bill-input" id="bill" type="number" inputmode="decimal" min="0" step="0.01"
+           placeholder="0.00" data-focusable>
+  </div>
+
+  <div class="card">
+    <label class="lbl">Tip %</label>
+    <div class="stepper">
+      <button class="step" id="tipDown" data-focusable aria-label="Decrease tip">−</button>
+      <div class="val" id="tipVal">10%</div>
+      <button class="step" id="tipUp" data-focusable aria-label="Increase tip">+</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="lbl">People</label>
+    <div class="stepper">
+      <button class="step" id="pplDown" data-focusable aria-label="Fewer people">−</button>
+      <div class="val" id="pplVal">2</div>
+      <button class="step" id="pplUp" data-focusable aria-label="More people">+</button>
+    </div>
+  </div>
+
+  <button class="cur" id="curBtn" data-focusable aria-label="Change currency">Currency: EGP</button>
+
+  <div class="result">
+    <div class="cap">Each person pays</div>
+    <div class="per" id="perPerson">0.00 <small id="perCur">EGP</small></div>
+    <div class="tot" id="totalWithTip">Total with tip: 0.00 EGP</div>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+var TIPS=[0,5,10,15,20,25];
+var CURS=["EGP","$","€","£"];
+var bill=0, tipIdx=2, people=2, curIdx=0;
+
+var billEl=document.getElementById("bill");
+var tipVal=document.getElementById("tipVal");
+var pplVal=document.getElementById("pplVal");
+var curBtn=document.getElementById("curBtn");
+var perPerson=document.getElementById("perPerson");
+var perCur=document.getElementById("perCur");
+var totalWithTip=document.getElementById("totalWithTip");
+
+function perPersonCalc(b, tipPct, n){
+  if(n<=0){return 0;}
+  return (b*(1+tipPct/100))/n;
+}
+function fmt(n){return (isFinite(n)?n:0).toFixed(2);}
+
+function render(){
+  var tip=TIPS[tipIdx];
+  var per=perPersonCalc(bill,tip,people);
+  var total=bill*(1+tip/100);
+  var cur=CURS[curIdx];
+  tipVal.textContent=tip+"%";
+  pplVal.textContent=String(people);
+  curBtn.textContent="Currency: "+cur;
+  perPerson.innerHTML=fmt(per)+" <small>"+cur+"</small>";
+  perCur.textContent=cur;
+  totalWithTip.textContent="Total with tip: "+fmt(total)+" "+cur;
+}
+
+billEl.addEventListener("input",function(){
+  var v=parseFloat(billEl.value);
+  bill=isNaN(v)||v<0?0:v;
+  render();
+});
+document.getElementById("tipDown").addEventListener("click",function(){
+  tipIdx=(tipIdx+TIPS.length-1)%TIPS.length; render();
+});
+document.getElementById("tipUp").addEventListener("click",function(){
+  tipIdx=(tipIdx+1)%TIPS.length; render();
+});
+document.getElementById("pplDown").addEventListener("click",function(){
+  people=Math.max(1,people-1); render();
+});
+document.getElementById("pplUp").addEventListener("click",function(){
+  people=Math.min(12,people+1); render();
+});
+curBtn.addEventListener("click",function(){
+  curIdx=(curIdx+1)%CURS.length; render();
+});
+
+/* D-pad: arrows move between controls, Enter activates */
+function focusables(){
+  return Array.prototype.slice.call(document.querySelectorAll("[data-focusable]"))
+    .filter(function(el){return !el.disabled && el.offsetParent!==null;});
+}
+document.addEventListener("keydown",function(e){
+  var active=document.activeElement;
+  var inField=active && (active.tagName==="INPUT"||active.tagName==="TEXTAREA");
+  if(e.key==="Enter"){
+    if(inField){return;}
+    e.preventDefault();
+    if(active&&active.getAttribute("data-focusable")!==null){active.click();}
+    return;
+  }
+  var fwd=(e.key==="ArrowRight"||e.key==="ArrowDown");
+  var back=(e.key==="ArrowLeft"||e.key==="ArrowUp");
+  if(!fwd&&!back){return;}
+  if(inField&&(e.key==="ArrowLeft"||e.key==="ArrowRight")){return;} /* caret nav in input */
+  e.preventDefault();
+  var items=focusables();
+  if(!items.length){return;}
+  var i=items.indexOf(active);
+  if(i===-1){items[0].focus();return;}
+  i=(i+(fwd?1:-1)+items.length)%items.length;
+  items[i].focus();
+});
+
+render();
+var first=focusables()[0];
+if(first){first.focus();}
+})();
+</script>
+</body>
+</html>
